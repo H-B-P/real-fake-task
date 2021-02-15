@@ -4,11 +4,22 @@ import numpy as np
 def dummy_this_cat_col(inputDf, col, threshold=0):
  cdf = inputDf.copy()
  uniques = pd.unique(cdf[col])
+ usedUniques=[]
  for unique in uniques:
   if (float(len(cdf[cdf[col]==unique]))/float(len(cdf)))>=threshold:
    cdf[col+"_is_"+str(unique)] = (cdf[col]==unique).astype(int)
+   usedUniques.append(unique)
+ cdf=cdf.drop(col, axis=1)
+ return cdf, usedUniques
+
+def dummy_this_cat_col_given_uniques(inputDf, col, uniques):
+ cdf = inputDf.copy()
+ uniques = pd.unique(cdf[col])
+ for unique in uniques:
+   cdf[col+"_is_"+str(unique)] = (cdf[col]==unique).astype(int)
  cdf=cdf.drop(col, axis=1)
  return cdf
+
 
 def get_winsors_for_this_cont_col(inputDf, col, lb=0.01, ub=0.99):
  lower = inputDf[col].quantile(lb)
