@@ -27,8 +27,8 @@ def construct_model(inputDf, explanatories, target, nrounds=100, lr=0.1, grad=ca
   model[x]["m"]=0
  
  for i in range(nrounds):
-  print(i)
-  explain(model, explanatories)
+  print("epoch: "+str(i)+"/"+str(nrounds))
+  #explain(model, explanatories)
   preds = predict(inputDf, model)
   grads = grad(np.array(preds), np.array(inputDf[target]))
   for x in explanatories:
