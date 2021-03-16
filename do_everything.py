@@ -42,6 +42,7 @@ if True:
   trainDf, uus = prep.dummy_this_cat_col(trainDf,c)
   uniques[c] = uus
 
+#we need winsors dead
 
 lowerWinsors={}
 upperWinsors={}
