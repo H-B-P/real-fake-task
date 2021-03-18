@@ -15,6 +15,8 @@ df = pd.read_csv("../data/train.csv")
 
 df = df[["cont3","cont4"]+["cat1","cat2","cat3"]+["loss"]] #simplify for testing
 
+#df = df[["cont3","cont4"]+["loss"]] 
+
 catCols  = [c for c in df.columns if "cat" in c]
 contCols = [c for c in df.columns if "cont" in c]
 targetCols = ["loss"]
@@ -57,7 +59,7 @@ for col in contCols:
 
 #==Actually model!===
 
-model = construct_model.construct_model(trainDf, segPoints, [c for c in trainDf.columns if "cont" in c], "loss", 1000, 0.2)
+model = construct_model.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2)
 
 #==Viz Model==
 
