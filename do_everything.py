@@ -3,9 +3,10 @@ import pandas as pd
 
 import prep
 import seg
-import construct_model
+import actual_modelling
 import analytics
 import viz
+import util
 
 SEGS_PER_CONT=4
 
@@ -53,25 +54,25 @@ for col in contCols:
  segPointList = []
  for ratio in ratioList:
   segpt = seg.get_segpt(trainDf, col, ratio)
-  roundedSegpt = seg.round_to_sf(segpt, 3)
+  roundedSegpt = util.round_to_sf(segpt, 3)
   segPointList.append(roundedSegpt)
  segPoints[col]=segPointList
 
 #==Actually model!===
 
-model = construct_model.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2)
+model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2)
 
 #==Viz Model==
 
 for col in contCols:
  print(col)
  intervs, prevs = viz.get_cont_pdp_prevalences(trainDf, col)
- print(intervs)
- print(prevs)
+ print([util.round_to_sf(x) for x in intervs])
+ print([util.round_to_sf(x) for x in prevs])
 
 #==Predict==
 
-testDf["PREDICTED"]=construct_model.predict(testDf, model)
+testDf["PREDICTED"]=actual_modelling.predict(testDf, model)
 
 print(testDf[["loss","PREDICTED"]])
 
@@ -79,17 +80,17 @@ print(testDf[["loss","PREDICTED"]])
 
 p, a = viz.get_Xiles(testDf, "PREDICTED", "loss", 10)
 print("DECILES")
-print(p)
-print(a)
+print([util.round_to_sf(x) for x in p])
+print([util.round_to_sf(x) for x in a])
 
 #==Analyze (i.e. get summary stats)==
 
 print("MAE")
-print(analytics.get_mae(testDf["PREDICTED"],testDf["loss"]))
+print(util.round_to_sf(analytics.get_mae(testDf["PREDICTED"],testDf["loss"])))
 print("RMSE")
-print(analytics.get_rmse(testDf["PREDICTED"],testDf["loss"]))
+print(util.round_to_sf(analytics.get_rmse(testDf["PREDICTED"],testDf["loss"])))
 print("MEANS")
-print(analytics.get_means(testDf["PREDICTED"],testDf["loss"]))
+print(util.round_to_sf(testDf["PREDICTED"].mean()), util.round_to_sf(testDf["loss"].mean()))
 print("DRIFT COEFF")
 #print(analytics.get_drift_coeff(testDf["PREDICTED"],testDf["loss"]))
-print(analytics.get_drift_coeff_macro(p,a))
+print(util.round_to_sf(analytics.get_drift_coeff_macro(p,a)))

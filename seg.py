@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
+import util
 
 def get_segpt(df, col, ratio, iters=30, sq=True):
  if sq:
@@ -27,6 +28,3 @@ def get_ratios(nseg):
  for i in range(1,nseg):
   ratios.append(float(i)/float(nseg-i))
  return ratios
-
-def round_to_sf(x, sf):
- return round(x,sf-1-int(math.floor(math.log10(abs(x)))))
