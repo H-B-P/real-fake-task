@@ -1,6 +1,14 @@
 import pandas as pd
 import numpy as np
 
+def get_uniques_for_this_cat_col(inputDf, col, threshold=0):
+ uniques = pd.unique(cdf[col])
+ passingUniques = []
+ for unique in uniques:
+  if (float(len(inputDf[inputDf[col]==unique]))/float(len(inputDf)))>=threshold:
+   passingUniques.append(unique)
+ return cdf, passingUniques
+
 def dummy_this_cat_col(inputDf, col, threshold=0):
  cdf = inputDf.copy()
  uniques = pd.unique(cdf[col])
