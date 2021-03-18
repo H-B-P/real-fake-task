@@ -64,28 +64,28 @@ def explain(model, sf=5):
   print(col, roundify_dict(model["cats"][col]))
  print("-")
 
-def update_using_pena(amt, push, pena, multiplier=1, zeroCheck=1, i=0):
- if amt==0:
-  if i%zeroCheck==0:
+def update_using_pena(amt, push, pena, multiplier=1, zeroVal=0, zeroCheck=1, i=0):
+ if amt==zeroVal:
+  if (i%zeroCheck)==0:
    if abs(pena)>abs(push):
-    return 0
+    return zeroVal
    else:
-    if push>0:
+    if push>zeroVal:
      return amt+(push-pena)*multiplier
     else:
      return amt+(push+pena)*multiplier
  else:
-  if amt>0:
+  if amt>zeroVal:
    wouldBeOutPut = amt+(push-pena)*multiplier
   else:
    wouldBeOutPut = amt+(push+pena)*multiplier
-  if wouldBeOutPut*amt<0: #i.e. if amt and wouldBeOutPut have different signs, i.e. if moving from former to latter would take you past a zero
-   return 0 #zeros are sticky!
+  if ((wouldBeOutPut-zeroVal)*(amt-zeroVal))<0: #i.e. if amt and wouldBeOutPut have different signs, i.e. if moving from former to latter would take you past a zero
+   return zeroVal #"don't bother" is sticky!
   else:
    return wouldBeOutPut
    
 
-def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr={"uniques":0.1}, pena=0.1, grad=calculus.Gamma_grad, startingModel=None):
+def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr=0.1, pena={"uniques":0.1, "segs":0.01}, grad=calculus.Gamma_grad, startingModel=None):
  
  #Prep the model if we aren't given one to start
  
@@ -131,7 +131,8 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
    model["conts"][col]["m"]-=sum(gpoe*((inputDf[col]-model["conts"][col]["z"])/inputDf[col].std(ddof=0)))*mult
    if "segs" in model["conts"][col]:
     for seg in model["conts"][col]["segs"]:
-     seg[1]-=sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0)))*mult
+     seg[1] = update_using_pena(seg[1], -sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0))), pena["segs"]*len(inputDf), mult, 0)
+     #seg[1]-=sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0)))*mult
   
   for col in cats:
    effectOfCol = get_effect_of_this_cat_col(inputDf, model, col)
@@ -139,9 +140,9 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
    gpoe = grads*preds/effectOfCol
    mult = lr/len(inputDf)
    
-   model["cats"][col]["OTHER"]-=sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])*mult
+   model["cats"][col]["OTHER"]=update_using_pena(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())]), pena["uniques"]*len(inputDf), mult,1)
    for unique in model["cats"][col]["uniques"]:
-    model["cats"][col]["uniques"][unique]-=sum((gpoe)[inputDf[col]==unique])*mult
+    model["cats"][col]["uniques"][unique] = update_using_pena(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique]), pena["uniques"]*len(inputDf), mult,1)
   #model=enforce_constraints.enforce_all_constraints(inputDf, model)
  
  return model
