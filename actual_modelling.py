@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
+import copy
 
 
 import calculus
@@ -13,6 +14,33 @@ import enforce_constraints
 
 EXAMPLE_MODEL={"BIG_C":1700,"conts":{"cont1":{"m":1,"c":2,"z":0.35, "segs":[[0.5,0.01],[0.7,0.02]]}, "cont2":{"m":-1, "c":4, "z":0.43}}, "cats":{"cat1":{"uniques":{"wstfgl":1.05, "forpalorp":0.92}, "OTHER":1.04}}}
 
+def de_feat(model):
+ oldModel=copy.deepcopy(model)
+ newModel={"BIG_C":oldModel["BIG_C"], "conts":{}, "cats":{}}
+ 
+ for col in oldModel["conts"]:
+  empty=True
+  if oldModel["conts"][col]["m"]!=0:
+   empty=False
+  if oldModel["conts"][col]["c"]!=1:
+   empty=False
+  for seg in oldModel["conts"][col]["segs"]:
+   if seg[1]!=0:
+    empty=False
+  if not empty:
+   newModel["conts"][col]=oldModel["conts"][col]
+ 
+ for col in oldModel["cats"]:
+  empty=True
+  if oldModel["cats"][col]["OTHER"]!=1:
+   empty=False
+  for unique in oldModel["cats"][col]["uniques"]:
+   if oldModel["cats"][col]["uniques"][unique]!=1:
+    empty=False
+  if not empty:
+   newModel["cats"][col]=oldModel["cats"][col]
+ 
+ return newModel
 
 def predict(inputDf, model):
  preds = pd.Series([model["BIG_C"]]*len(inputDf))
@@ -90,7 +118,25 @@ def update_using_pena_incl_feature(amt, push, pena, numerator, denominator, feat
  else:
   return update_using_pena(amt, push, pena+featlim, multiplier, zeroVal, zeroCheck, i)
 
-def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr=0.1, pena={"uniques":0.1, "grads":0.01, "segs":0.01, "overalls":0.01, "features":0.01}, grad=calculus.Gamma_grad, startingModel=None):
+def prep_starting_model(inputDf, conts, segs, cats, uniques, target):
+ model={"BIG_C":inputDf[target].mean(), "conts":{}, "cats":{}}
+ for col in conts:
+  model["conts"][col]={}
+  model["conts"][col]["c"]=1
+  model["conts"][col]["m"]=0
+  model["conts"][col]["z"]=inputDf[col].mean()
+  model["conts"][col]["segs"]=[]
+  for seg in segs[col]:
+   model["conts"][col]["segs"].append([seg,0])
+ 
+ for col in cats:
+  model["cats"][col]={"OTHER":1}
+  model["cats"][col]["uniques"]={}
+  for unique in uniques[col]:
+   model["cats"][col]["uniques"][unique]=1
+
+
+def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr=0.1, pena={"uniques":0.1, "grads":0.01, "segs":0.01, "catfeat":0.01, "contfeat":0.01}, startingModel=None, grad=calculus.Gamma_grad):
  
  #Prep the model if we aren't given one to start
  
@@ -117,7 +163,7 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
   
   model=startingModel.copy()
  
- 
+ #And here we go . . .
  
  for i in range(nrounds):
   
@@ -127,7 +173,7 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
   preds = predict(inputDf, model)
   grads = grad(np.array(preds), np.array(inputDf[target]))
   
-  for col in conts:
+  for col in model["conts"]:
    effectOfCol = get_effect_of_this_cont_col(inputDf, model, col)
    
    gpoe = grads*preds/effectOfCol #these terms keep appearing together
@@ -142,13 +188,13 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
     featurePenaDenominator += seg[1]**2
    featurePenaDenominator = math.sqrt(featurePenaDenominator)
    
-   model["conts"][col]["c"] = update_using_pena_incl_feature(model["conts"][col]["c"], -sum(gpoe)*1/len(inputDf), 0, abs(model["conts"][col]["c"]-1)*pena["features"], featurePenaDenominator, pena["features"], lr, 1)
-   model["conts"][col]["m"] = update_using_pena_incl_feature(model["conts"][col]["m"], -sum(gpoe*((inputDf[col]-model["conts"][col]["z"])/inputDf[col].std(ddof=0)))/len(inputDf), pena["grads"], abs(model["conts"][col]["m"])*pena["features"], featurePenaDenominator, pena["features"],  lr, 0)
+   model["conts"][col]["c"] = update_using_pena_incl_feature(model["conts"][col]["c"], -sum(gpoe)*1/len(inputDf), 0, abs(model["conts"][col]["c"]-1)*pena["contfeat"], featurePenaDenominator, pena["contfeat"], lr, 1)
+   model["conts"][col]["m"] = update_using_pena_incl_feature(model["conts"][col]["m"], -sum(gpoe*((inputDf[col]-model["conts"][col]["z"])/inputDf[col].std(ddof=0)))/len(inputDf), pena["grads"], abs(model["conts"][col]["m"])*pena["contfeat"], featurePenaDenominator, pena["contfeat"],  lr, 0)
    if "segs" in model["conts"][col]:
     for seg in model["conts"][col]["segs"]:
-     seg[1] = update_using_pena_incl_feature(seg[1], -sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0)))/len(inputDf), pena["segs"], abs(seg[1])*pena["features"], featurePenaDenominator, pena["features"], lr, 0)
+     seg[1] = update_using_pena_incl_feature(seg[1], -sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0)))/len(inputDf), pena["segs"], abs(seg[1])*pena["contfeat"], featurePenaDenominator, pena["contfeat"], lr, 0)
   
-  for col in cats:
+  for col in model["cats"]:
    effectOfCol = get_effect_of_this_cat_col(inputDf, model, col)
    
    gpoe = grads*preds/effectOfCol
@@ -156,9 +202,9 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
    
    #We could probably do a pure-overall approach, but hybridizing just seems like the wrong move. Check overall feat effects at end; if no weirdness, don't bother solving nonproblems.
    #specZeroValO = model["cats"][col]["OTHER"]+(1-sum(effectOfCol)/len(effectOfCol))
-   model["cats"][col]["OTHER"]=update_using_pena_incl_feature(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])/len(inputDf), pena["uniques"], abs(model["cats"][col]["OTHER"])*pena["features"], featurePenaDenominator, pena["features"], lr,1)
+   model["cats"][col]["OTHER"]=update_using_pena_incl_feature(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])/len(inputDf), pena["uniques"], abs(model["cats"][col]["OTHER"])*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
    for unique in model["cats"][col]["uniques"]:
-    model["cats"][col]["uniques"][unique] = update_using_pena_incl_feature(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique])/len(inputDf), pena["uniques"], abs(model["cats"][col]["uniques"][unique])*pena["features"], featurePenaDenominator, pena["features"], lr,1)
+    model["cats"][col]["uniques"][unique] = update_using_pena_incl_feature(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique])/len(inputDf), pena["uniques"], abs(model["cats"][col]["uniques"][unique])*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
   #model=enforce_constraints.enforce_all_constraints(inputDf, model)
  
  return model

@@ -34,6 +34,8 @@ testDf = testDf.reset_index()
 
 #==Prep==
 
+print("PREPARING")
+
 #Categoricals
 
 uniques={}
@@ -60,7 +62,9 @@ for col in contCols:
 
 #==Actually model!===
 
-model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2, {"uniques":0, "segs":0, "grads":0, "features":0.004 })
+model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2, {"uniques":0, "segs":0, "grads":0, "contfeat":0.01, "catfeat":0.03})
+model = actual_modelling.de_feat(model)
+model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2, {"uniques":0, "segs":0, "grads":0, "contfeat":0, "catfeat":0}, model)
 
 #==Viz Model==
 
