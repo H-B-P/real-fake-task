@@ -60,7 +60,7 @@ for col in contCols:
 
 #==Actually model!===
 
-model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2, {"uniques":0.01, "segs":0.1})
+model = actual_modelling.construct_model(trainDf, contCols, segPoints, catCols, uniques, "loss", 100, 0.2, {"uniques":0, "segs":0, "grads":0, "features":0.004 })
 
 #==Viz Model==
 

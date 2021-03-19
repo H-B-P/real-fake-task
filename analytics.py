@@ -13,15 +13,6 @@ def get_mae(pred,act):
 def get_means(pred,act):
  return sum(pred)/len(pred), sum(act)/len(act)
 
-def get_drift_coeff(pred, act):
- avePred = sum(pred)/len(pred)
- aveAct = sum(act)/len(act)
- 
- numerator=sum((pred-avePred)*(act-aveAct))
- denominator=sum((pred-avePred)*(pred-avePred))
- 
- return numerator/denominator
-
 def get_drift_coeff_macro(predXiles, actXiles):
  avePred = sum(predXiles)/len(predXiles)
  aveAct = sum(actXiles)/len(actXiles)
