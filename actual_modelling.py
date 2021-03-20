@@ -134,36 +134,13 @@ def prep_starting_model(inputDf, conts, segs, cats, uniques, target):
   model["cats"][col]["uniques"]={}
   for unique in uniques[col]:
    model["cats"][col]["uniques"][unique]=1
+ 
+ return model
 
 
-def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr=0.1, pena={"uniques":0.1, "grads":0.01, "segs":0.01, "catfeat":0.01, "contfeat":0.01}, startingModel=None, grad=calculus.Gamma_grad):
+def construct_model(inputDf, target, nrounds, lr, pena, startingModel, grad=calculus.Gamma_grad):
  
- #Prep the model if we aren't given one to start
- 
- if startingModel==None:
- 
-  model={"BIG_C":inputDf[target].mean(), "conts":{}, "cats":{}}
-  
-  for col in conts:
-   model["conts"][col]={}
-   model["conts"][col]["c"]=1
-   model["conts"][col]["m"]=0
-   model["conts"][col]["z"]=inputDf[col].mean()
-   model["conts"][col]["segs"]=[]
-   for seg in segs[col]:
-    model["conts"][col]["segs"].append([seg,0])
-  
-  for col in cats:
-   model["cats"][col]={"OTHER":1}
-   model["cats"][col]["uniques"]={}
-   for unique in uniques[col]:
-    model["cats"][col]["uniques"][unique]=1
- 
- else:
-  
-  model=startingModel.copy()
- 
- #And here we go . . .
+ model = copy.deepcopy(startingModel)
  
  for i in range(nrounds):
   
@@ -202,9 +179,9 @@ def construct_model(inputDf, conts, segs, cats, uniques, target, nrounds=100, lr
    
    #We could probably do a pure-overall approach, but hybridizing just seems like the wrong move. Check overall feat effects at end; if no weirdness, don't bother solving nonproblems.
    #specZeroValO = model["cats"][col]["OTHER"]+(1-sum(effectOfCol)/len(effectOfCol))
-   model["cats"][col]["OTHER"]=update_using_pena_incl_feature(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])/len(inputDf), pena["uniques"], abs(model["cats"][col]["OTHER"])*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
+   model["cats"][col]["OTHER"]=update_using_pena_incl_feature(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])/len(inputDf), pena["uniques"], abs(model["cats"][col]["OTHER"]-1)*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
    for unique in model["cats"][col]["uniques"]:
-    model["cats"][col]["uniques"][unique] = update_using_pena_incl_feature(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique])/len(inputDf), pena["uniques"], abs(model["cats"][col]["uniques"][unique])*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
+    model["cats"][col]["uniques"][unique] = update_using_pena_incl_feature(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique])/len(inputDf), pena["uniques"], abs(model["cats"][col]["uniques"][unique]-1)*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
   #model=enforce_constraints.enforce_all_constraints(inputDf, model)
  
  return model
