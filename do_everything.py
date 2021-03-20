@@ -8,16 +8,16 @@ import analytics
 import viz
 import util
 
-SEGS_PER_CONT=3
+SEGS_PER_CONT=5
 
 #==Load in==
 
 df = pd.read_csv("../data/train.csv")
 
-#df=df[[c for c in df.columns if c!="id"]]
+df=df[[c for c in df.columns if c!="id"]]
 #df = df[["cont3","cont4"]+["cat1","cat2","cat35"]+["loss"]] #simplify for testing
 #df = df[[c for c in df.columns if "cont" in c]+["cat"+str(i) for i in range(1,40+1)]+["loss"]] #simplify for testing
-df = df[["cont1", "cont2"]+["cat"+str(i) for i in range(1,40+1)]+["loss"]] #simplify for testing
+#df = df[["cont1", "cont2"]+["cat"+str(i) for i in range(1,40+1)]+["loss"]] #simplify for testing
 #df = df[[c for c in df.columns if "cont" in c]+["loss"]] #simplify for testing
 
 #df = df[["cont3","cont4"]+["loss"]] 
@@ -65,12 +65,13 @@ for col in contCols:
  segPoints[col]=segPointList
 
 #==Actually model!===
+
 model = actual_modelling.prep_starting_model(trainDf, contCols, segPoints, catCols, uniques, "loss")
-model = actual_modelling.construct_model(trainDf, "loss", 10, 0.1, {"uniques":0, "segs":0, "grads":0, "contfeat":0.01, "catfeat":0.001}, model)#quickly winnow out the really useless ones
+model = actual_modelling.construct_model(trainDf, "loss", 10, 0.05, {"uniques":0.03, "segs":0.02, "grads":0, "contfeat":0.04, "catfeat":0.04}, model)#quickly winnow out the really useless ones
 model = actual_modelling.de_feat(model)
-model = actual_modelling.construct_model(trainDf, "loss", 90, 0.1, {"uniques":0, "segs":0, "grads":0, "contfeat":0.01, "catfeat":0.001}, model)
+model = actual_modelling.construct_model(trainDf, "loss", 40, 0.05, {"uniques":0.03, "segs":0.02, "grads":0, "contfeat":0.04, "catfeat":0.04}, model)
 model = actual_modelling.de_feat(model)
-model = actual_modelling.construct_model(trainDf, "loss", 100, 0.1, {"uniques":0, "segs":0, "grads":0, "contfeat":0, "catfeat":0}, model)
+model = actual_modelling.construct_model(trainDf, "loss", 350, 0.1, {"uniques":0, "segs":0, "grads":0, "contfeat":0, "catfeat":0}, model)
 
 #==Viz Model==
 

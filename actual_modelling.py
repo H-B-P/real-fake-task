@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 import copy
+import time
 
 
 import calculus
@@ -144,11 +145,19 @@ def construct_model(inputDf, target, nrounds, lr, pena, startingModel, grad=calc
  
  for i in range(nrounds):
   
+  startTime=time.time()
+  
   print("epoch: "+str(i)+"/"+str(nrounds))
   explain(model)
   
+  tic=time.time()
   preds = predict(inputDf, model)
+  toc=time.time()
+  print(toc-tic)
   grads = grad(np.array(preds), np.array(inputDf[target]))
+  
+  print str(time.time()-startTime)+"s doing init preds"
+  startTime=time.time()
   
   for col in model["conts"]:
    effectOfCol = get_effect_of_this_cont_col(inputDf, model, col)
@@ -171,6 +180,9 @@ def construct_model(inputDf, target, nrounds, lr, pena, startingModel, grad=calc
     for seg in model["conts"][col]["segs"]:
      seg[1] = update_using_pena_incl_feature(seg[1], -sum(gpoe*(abs(inputDf[col]-seg[0])/inputDf[col].std(ddof=0)))/len(inputDf), pena["segs"], abs(seg[1])*pena["contfeat"], featurePenaDenominator, pena["contfeat"], lr, 0)
   
+  print str(time.time()-startTime)+"s handling conts"
+  startTime=time.time()
+  
   for col in model["cats"]:
    effectOfCol = get_effect_of_this_cat_col(inputDf, model, col)
    
@@ -182,6 +194,9 @@ def construct_model(inputDf, target, nrounds, lr, pena, startingModel, grad=calc
    model["cats"][col]["OTHER"]=update_using_pena_incl_feature(model["cats"][col]["OTHER"], -sum((gpoe)[~inputDf[col].isin(model["cats"][col]["uniques"].keys())])/len(inputDf), pena["uniques"], abs(model["cats"][col]["OTHER"]-1)*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
    for unique in model["cats"][col]["uniques"]:
     model["cats"][col]["uniques"][unique] = update_using_pena_incl_feature(model["cats"][col]["uniques"][unique], -sum((gpoe)[inputDf[col]==unique])/len(inputDf), pena["uniques"], abs(model["cats"][col]["uniques"][unique]-1)*pena["catfeat"], featurePenaDenominator, pena["catfeat"], lr,1)
+  
+  print str(time.time()-startTime)+"s handling cats"
+  startTime=time.time()
   #model=enforce_constraints.enforce_all_constraints(inputDf, model)
  
  return model
